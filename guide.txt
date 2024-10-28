@@ -1,0 +1,162 @@
+Here's the final, expanded bug bounty report with all the vulnerabilities and technical details:
+
+---
+
+## Comprehensive Bug Bounty Report: Multiple Vulnerabilities on Videocon d2h Website
+
+### 1. **Summary**
+   - **Title**: Multiple Security Vulnerabilities on Videocon d2h Site (Information Leakage, CSRF, and Payment Manipulation)
+   - **Bug Types**: Information Leakage, CSRF, Payment Manipulation
+   - **Severity Level**: Critical
+   - **Affected URLs/Endpoints**:
+      - Quick Recharge Input: `https://www.d2h.com/`
+      - Login: `https://www.d2h.com/user-login`
+      - Profile Editing: `https://www.d2h.com/myaccount/edit-profile`
+      - Recharge: `https://www.d2h.com/myaccount/recharge`
+
+---
+
+### 2. **Vulnerability Details**
+
+first bug i found in the vcno recharge page that login without authentication
+so i just check in python script to brute force.
+that python code will send the vcno number randomly one by one if incase that correct the vcno number will print
+there are lot of account was get with simply brute forcing.
+when you want to exit CTRL+c button to click.
+
+#### **Bug 1: Information Leakage in Quick Recharge Feature**
+- **Description**: The Quick Recharge feature on the Videocon d2h site allows a user to view account information by only submitting a valid VC number. This lack of OTP or secondary authentication enables attackers to view sensitive account details by simply knowing or brute-forcing VC numbers.
+   
+- **Technical Explanation**:   
+   The `Quick Recharge` feature accepts a VC number in the input field. Once submitted, the site redirects to the account details page associated with that VC number. Because there is no OTP or secondary validation to confirm user identity, anyone with a valid VC number can access restricted account information without authentication.
+
+- **Steps to Reproduce**: 
+   1. Navigate to `https://www.d2h.com` and open the Quick Recharge section.
+   2. In the VC Number input field, enter a valid or randomly generated VC number.
+   3. Submit the form to be redirected to the user's account page.
+   4. Observe that personal account details are displayed without any further verification (e.g., OTP).
+
+- **Impact**: This vulnerability allows unauthorized access to user accounts, exposing account details like balance, recharge history, and personal information. A Python script has been created to automate brute-forcing of VC numbers and collect user details.
+
+---
+
+second bug : you have to login to your account in the user-login page one that page form get creditial with vcno number
+             mobile number i decide to get in vcno number. and select the otp login without password
+
+            when you send the api request that will return the user credentials.
+            already i have all the user vcno number so i create the python code with previous code add some stuff to get the user data
+            all the user data was stored in userdata.txt if incase file not create first create the userdata.txt file in your own
+            then execute that
+
+#### **Bug 2: Sensitive Data Disclosure via OTP Request in Login (Information Privilege Escalation)**
+- **Description**: During the login process, the OTP request API response includes sensitive user information, such as the user's registered mobile number, name, and SMS ID. This information is exposed without the user being authenticated, making it easy for attackers to gather personal information about any registered user by knowing only the VC number.
+
+- **Technical Explanation**:   
+   When a user requests an OTP for login verification, the API (`https://www.d2h.com/user-login`) responds with sensitive user data in JSON format. The response includes the user’s registered mobile number, SMS ID, name, and partially masked email address. This information can be leveraged by an attacker to build a profile of the user or conduct further targeted attacks.
+
+- **Steps to Reproduce**: 
+   1. Navigate to `https://www.d2h.com/user-login`.
+   2. Enter a valid VC number in the input field and request an OTP.
+   3. Inspect the API response with tools like Burp Suite.
+   4. Observe the following JSON response:
+      ```json 
+      { 
+          "result": true, 
+          "Message": "OTP has been sent to your Registered Mobile Number.", 
+          "MobileNo": "8189882856", 
+          "SMSid": "303486621", 
+          "Name": "Yokeshwaran", 
+          "Mail": "" 
+      } 
+      ```
+- **Impact**: This exposure of personal data without authorization makes the system vulnerable to information leakage, which could be exploited for social engineering, phishing, or identity theft. A Python script has been crafted to retrieve user data using VC numbers, storing data in `userdata.txt` in JSON format for easy reference. This script uses only 30-50 VC numbers but successfully gathers all user credentials.
+
+---
+
+THIRD BUG : i found this bug in form submissions in user profile. that file not contain CSRF token.
+            so i create the simple html file then run the html file that change the user profile details
+
+#### **Bug 3: CSRF Vulnerability in Edit Profile Feature**
+- **Description**: The profile editing form does not use CSRF tokens, allowing an attacker to make unauthorized modifications to user account details by crafting a CSRF attack. This lack of CSRF protection enables attackers to change sensitive information, such as secondary contact numbers, without the user’s knowledge or consent.
+
+- **Technical Explanation**:   
+   Cross-Site Request Forgery (CSRF) vulnerabilities occur when a malicious site can force authenticated users to perform unwanted actions on another site without additional authorization. The Edit Profile feature on the d2h site lacks CSRF tokens, which means it cannot verify the legitimacy of form submissions. Attackers can craft malicious HTML forms that automatically submit data to the Edit Profile endpoint when visited by an authenticated user.
+
+- **Steps to Reproduce**: 
+   1. Log in to your Videocon d2h account and visit the profile editing page at `https://www.d2h.com/myaccount/edit-profile`.
+   2. Use Burp Suite or a similar tool to intercept and analyze the request made when updating profile information.
+   3. Observe the lack of CSRF tokens in the request.
+   4. To exploit, create a custom HTML form that submits a secondary contact number without requiring user authentication:
+      ```html 
+      <form action="https://www.d2h.com/myaccount/edit-profile" method="POST"> 
+          <input type="hidden" name="secondaryNumber" value="1234567890"> 
+          <button type="submit">Change Details</button> 
+      </form> 
+      ```
+   5. Host this HTML file on a site and ask a logged-in user to visit the link. On loading the page, their account details will be modified.
+
+- **Impact**: Attackers can modify user data, which can have serious security implications if the attacker changes contact numbers or other sensitive data. An HTML CSRF file has been created to demonstrate the content modification. The form's response is confirmed to return "OK" upon successful user data update, similar to the Burp Suite response.
+
+---
+
+#### **Bug 4: Payment Manipulation During Recharge Process**
+- **Description**: During the recharge process, the amount parameter in the API request can be modified, allowing an attacker to manipulate the amount to pay significantly less than the actual cost of the package. This vulnerability can lead to financial losses for the provider.
+
+- **Technical Explanation**:   
+   When a user selects a recharge plan and proceeds with payment, the site sends a request containing the selected recharge amount. However, this amount is not validated server-side, allowing attackers to intercept and change the amount before the request is sent to the payment processor.
+
+- **Steps to Reproduce**: 
+   1. Go to `https://www.d2h.com/myaccount/recharge` and select a recharge plan (e.g., "6 months Kadambam HD" for ₹1499).
+   2. Proceed to the payment section and intercept the request using Burp Suite.
+   3. Modify the `amount=1499` parameter to a lower value (e.g., `amount=1`).
+   4. Forward the request and complete the payment.
+   5. Observe that the recharge is successfully processed at the manipulated amount.
+
+- **Impact**: This vulnerability allows users to manipulate recharge amounts, leading to significant revenue losses and compromising the integrity of the payment process.
+
+---
+After the payment check the api request 
+Bug 5: Information Leakage via Payment Order Status API
+
+    Description: The API endpoint /payment/JusPayOrderStatus?orderId={orderId} is vulnerable to brute-force attacks, allowing an attacker to access payment details of any user by simply 
+    guessing or iterating through order IDs. This vulnerability enables the retrieval of sensitive payment information, including customer email and phone number, without proper authorization.
+
+    Technical Explanation:
+    The API does not implement strict authorization checks for accessing payment details. When a valid order ID is provided in the GET request, the API responds with sensitive information 
+    regarding the payment, including user details. This makes it possible to brute-force order IDs and obtain payment details of multiple users.
+
+    Steps to Reproduce:
+        Observe the API request format: GET /payment/JusPayOrderStatus?orderId={orderId} HTTP/1.1.
+        Create a list of potential order IDs or iterate through a range of IDs.
+        Make requests using a tool like Burp Suite or a custom script to monitor the responses for valid order IDs.
+        Retrieve the JSON response, which contains sensitive user information:
+
+        json
+
+    {
+        "customer_email": "aa@gmail.com",
+        "customer_phone": "6370526769",
+        ...
+    }
+    
+    
+       *** script Name: user_pay_data.py ***
+      
+      simply brute forcing to get the other user payment and account deetails like atm card number.
+      so i created the python program to brute force this api request.
+      we can see the code.
+      all the data will store in the user_pay_data.txt file 
+      i am brute forcing just couple of numbers.
+
+### 3. **Recommendations**
+   - **Implement OTP or Two-Factor Authentication**: Ensure OTP or multi-factor authentication is used for accessing any sensitive account information to prevent unauthorized access.
+   - **Remove Sensitive Data from API Responses**: Restrict API responses to return only essential data, particularly during the login or OTP request phase.
+   - **Enforce CSRF Protection**: Add CSRF tokens to all forms, especially those that update user information, to prevent cross-site request forgery attacks.
+   - **Validate Payment Parameters on the Server**: Perform strict server-side validation on payment parameters to prevent tampering, ensuring that the amount and package IDs are cross-referenced against secure server records.
+
+### 4. **Conclusion**
+These vulnerabilities collectively present a critical risk to both user privacy and the platform’s financial security. Addressing these issues will protect user data, improve account security, and secure the payment process, ultimately enhancing overall site integrity.
+
+---
+
+This report should effectively convey each vulnerability’s scope, technical details, and impact.
